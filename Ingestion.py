@@ -1,4 +1,7 @@
 import fitz  #PyMuPDF
+import ollama
+from sentence_transformers import SentenceTransformer
+import chromadb
 
 def load_pdf (path):
     doc = fitz.open(path)
@@ -27,7 +30,7 @@ def load_pdf (path):
         current_chunk = ""
 
         for sentence in sentences:
-            if len(current_chunk) +len(sentence)<600:
+            if len(current_chunk) +len(sentence)<300:
                 current_chunk += sentence +". "
             else:
                 if current_chunk.strip():
@@ -46,12 +49,9 @@ def load_pdf (path):
     return chunks
 
 
-chunks = load_pdf(r"C:\Users\hp\Desktop\PythonThesis\RAG testing.docx")
+chunks = load_pdf(r"C:\Users\hp\Desktop\PythonThesis\RAG testing.pdf")
 print(f"Created {len(chunks)} chunks")
 
-
-from sentence_transformers import SentenceTransformer
-import chromadb
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 client = chromadb.Client()
@@ -73,11 +73,15 @@ print("PDF indexed!")
 def ask(question):
     q_embeddings = model.encode([question]).tolist()
 
-    results = collection.query(query_embeddings =q_embeddings, n_results = 3)
+    results = collection.query(query_embeddings =q_embeddings, n_results = 5)
     context = "\n\n".join(results["documents"][0])
+    pages =[m["page"] for m in results["metadatas"][0]]
 
 
     prompt = f"""Answer the question based only on the context below.
+    Use ONLY the context below to answer. Be specific and complete.
+    If the answer is not in the context, say exactly: "This information is not in the document."
+    Do not guess or add information from outside the context.   
 
 Context:
 {context}
@@ -85,13 +89,26 @@ Context:
 Question : {question}
 Answer:"""
     
-    import ollama
     response = ollama.chat(
         model = "llama2",
         messages = [{"role":"user", "content": prompt}]
     )
 
-    return response["message"]["content"]
+    answer = response["message"]["content"]
+    print(f"Pages used:{pages}")
+    return answer
 
-answer = ask("what is the main topic of this document?")
-print(answer)
+"""
+Questions = [
+    "What is the main purpose of this norm?",
+    "What types of machines does this document cover?",
+    "What is functional status B?",
+    "What is the price of the machine?",
+    "Who is the CEO of CLAAS?",
+]
+
+for q in Questions:
+    print(f"\n{'='*50}")
+    print(f"Q:{q}")
+    print(f"A:{ask(q)}")
+"""
