@@ -1,0 +1,20 @@
+# Virtual environment
+.venv/
+venv/
+
+# ChromaDB local database
+chroma_db/
+
+# Your PDF (likely confidential)
+*.pdf
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables
+.env
+
+# VSCode settings
+.vscode/
